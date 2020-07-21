@@ -44,6 +44,7 @@ class MembershipQuery: public Element {
 		}
 
 		void setType(int type);
+		int getType() {return queryType;};
 		void setMaxResp(int max);
 		int getMaxResp();
 		void setGroupAddr(uint32_t group);

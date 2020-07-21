@@ -5,7 +5,6 @@
 #include "V3Membership.hh"
 CLICK_DECLS
     GrouprecordAddressStruct* GroupRecord::addToPacket(GroupRecordStruct* p){
-
         if (p==0) {
             click_chatter("unable to add group record");
         };

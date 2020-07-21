@@ -4,11 +4,15 @@
 CLICK_DECLS
 
 	/**
-	 * helper struct that only denotes an address whihc is used to create and read a packet
+	 * helper struct that only denotes an address which is used to create and read a packet
 	 * */
 	struct GrouprecordAddressStruct{
 		in_addr address;
 	};
+	
+	/**
+	 * struct that represents the contents of a group record
+	 * */
 	struct GroupRecordStruct{	
 			uint8_t recordType;
 			uint8_t auxDataLen;
@@ -16,6 +20,10 @@ CLICK_DECLS
 			struct in_addr multicast;
 
 		};
+	
+	/**
+	 * struct that represent a membershipreport
+	 * */
 	struct V3MembershipReportPackage {
 			uint8_t type;
 			uint8_t reserved1;
@@ -23,6 +31,10 @@ CLICK_DECLS
 			uint16_t reserved2;
 			uint16_t groupRecordNumber;
 		};
+	
+	/**
+	 * class that represents a grouprecord
+	 * */
 	class GroupRecord{
 		
 		private:
@@ -46,7 +58,7 @@ CLICK_DECLS
 			/**
 			 * adds the current data of this GroupRecord  to a packet, this i with igmp ip encap
 			 * @param q the packet which the GroupRecord report will be added to
-			 * @return the a packet  with the GroupRecord 
+			 * @return a pointer to a packet with the GroupRecord
 			 * */
 			GrouprecordAddressStruct* addToPacket(GroupRecordStruct* q);
 			/**
@@ -55,7 +67,9 @@ CLICK_DECLS
 			int getSize();
 	};
     
-	
+	/**
+	 * class that represents a membershipreport with multiple grouprecords
+	 * */
 	class V3Membership : public Element{
 		private:
 			Vector<GroupRecord> grouprecords;
@@ -101,6 +115,5 @@ CLICK_DECLS
 			void setChecksumCorrect(bool correct);
 	};
 
-	
 CLICK_ENDDECLS
 #endif

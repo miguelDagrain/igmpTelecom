@@ -3,7 +3,7 @@
 #include <click/error.hh>
 #include "IgmpIPEncap.hh"
 #include "MembershipQuery.hh"
-#include "../packet_sources/HelperFunc.hh"
+#include "../Helper/HelperFunc.hh"
 
 CLICK_DECLS
     void MembershipQuery::setType(int type){
