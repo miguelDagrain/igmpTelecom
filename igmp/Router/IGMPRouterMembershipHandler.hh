@@ -6,6 +6,7 @@
 CLICK_DECLS
 class V3Membership;
 class HelperFunc;
+class IGMPRouterMembershipHandler;
 
 /**
  * copied and modified from click udp as it isnt a complete type
@@ -17,8 +18,9 @@ struct igmp_udp {
     uint16_t	uh_sum;			/* 6-7   checksum		     */
 };
 
-class IGMPRouterMembershipHandler;
-
+/**
+ * struct to keep track of the interfaces in the router
+ * */
 struct InterfaceReceptionState: public Element{
 	//initialisation as a class.
 	InterfaceReceptionState();
@@ -51,12 +53,17 @@ struct InterfaceReceptionState: public Element{
 	Vector<in_addr> sourceList;
 };
 
+/**
+ * struct to keep data of start up query timer
+ * */
 struct startUpQueryTimerData{
 	IGMPRouterMembershipHandler* me;
 	int count;
 };
 
-//struct neceassary for timers
+/**
+ * struct to keep data of last member query timer
+ * */
 struct lastMemberQueryTimerData{
 	IGMPRouterMembershipHandler* me;
 	int count;
@@ -66,6 +73,9 @@ struct lastMemberQueryTimerData{
 	bool cancelled;
 };
 
+/**
+ * class to represent a router side for the igmp protocol
+ * */
 class IGMPRouterMembershipHandler : public Element { 
 	public:
 		IGMPRouterMembershipHandler();

@@ -2,7 +2,10 @@
 #define CLICK_MEMBERSHIPQUERY_HH
 #include <click/element.hh>
 CLICK_DECLS
-    
+
+/**
+ * This struct represents the actual message information used to make the igmp package
+ * */
 struct MembershipQueryMessage {
     uint8_t type;
     uint8_t max_resp_code;
@@ -16,6 +19,9 @@ struct MembershipQueryMessage {
     uint16_t numberOfSources;
 };
 
+/**
+ * This class makes the membership query, it is used to read and create writablepackages.
+ * */
 class MembershipQuery: public Element {
 	private:
 		uint8_t queryType;

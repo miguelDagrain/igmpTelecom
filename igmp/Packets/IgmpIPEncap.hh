@@ -3,13 +3,21 @@
 #include <click/element.hh>
 CLICK_DECLS
 
-	struct routerAlert{
-		uint8_t part1;
-		uint8_t part2;
-		uint8_t octet1;
-		uint8_t octet2;
-	};
-	
+/**
+ * struct to represent the router alert necessqry to send correct packages.
+ * They are used to make the packets correct not for functional requirements.
+ * */
+struct routerAlert{
+	uint8_t part1;
+	uint8_t part2;
+	uint8_t octet1;
+	uint8_t octet2;
+};
+
+/**
+ * class to encapsulate igmp packages in IP packages, both membershipQuery
+ * and v3 membership packages.
+ * */
 class IgmpIpEncap : public Element {
 	private:
 	//some helper variables used to get the src and dst ip after reading in the ip header
