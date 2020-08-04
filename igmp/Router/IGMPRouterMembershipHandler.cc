@@ -47,6 +47,7 @@ IGMPRouterMembershipHandler::IGMPRouterMembershipHandler(): queryIntervalTimer(t
 
 	typeQueries = 0x11;
 	multicastAddress.s_addr = 0;
+	wrongAddress.s_addr = 0;
 	checksumValid = true;
 }
 
@@ -91,7 +92,7 @@ void IGMPRouterMembershipHandler::removeInterface(InterfaceReceptionState* inter
 	if(removedPosition != NULL){
 		interfaces.erase(removedPosition);
 	} else {
-		click_chatter("No record was recognized by the router for removal.");
+		click_chatter("\033[0;30mNo record was recognized by the router for removal.\033[0m");
 	}
 }
 
@@ -124,6 +125,9 @@ int IGMPRouterMembershipHandler::configure(Vector<String> &conf, ErrorHandler *e
 
 void IGMPRouterMembershipHandler::sendGeneralQuery(){
 	MembershipQuery generalQuery=makeGeneralQuery();
+	if (!checksumValid){
+		click_chatter("\033[0;34mSetting checksum to wrong.\033[0m");
+	}
 	sendQuery(1,generalQuery.addToPacket(0,getn1(),getdst(),getseq(), checksumValid));
 	incrseq();
 	sendQuery(2,generalQuery.addToPacket(0,getn2(),getdst(),getseq(), checksumValid));
@@ -172,9 +176,7 @@ void IGMPRouterMembershipHandler::handleExpiryLastMemberQueryTimer(Timer * t, vo
 	lastMemberQueryTimerData* data = reinterpret_cast<lastMemberQueryTimerData *>(counter);
 	data->count--;
 	if (data->count == 0){
-		click_chatter("lmqt expired");
 		if (data->cancelled){
-			click_chatter("lmqt expired but cancelled");
 		}else{
 			//though we never calculated the last member query time a simple rundown of the algorithm is enough to see that amount of time has now passed:
 			//last member query count * last member query interval
@@ -211,18 +213,18 @@ void IGMPRouterMembershipHandler::push(int port, Packet *p){
 	}else{
 		//if not it is an igmp message and you should update
 		WritablePacket *q=p->uniqueify();
-		click_ip* ip=(click_ip*)q->data();
 		V3Membership mem=V3Membership::readPacket(q);
-		if(mem.isChecksumCorrect()){
+		if(mem.isChecksumCorrect() && mem.getType() == 0x22){
+			click_ip* ip=(click_ip*)q->data();
 			handleMembershipReport(ip->ip_src,port,&mem);
+		}else {
+			p->kill();
+			return;
 		}
 	}
 }
 
 void IGMPRouterMembershipHandler::handleUDPPacket(int interface,Packet* p){
-	/**debug
-	click_chatter("got udp");
-	**/
 	WritablePacket* q=p->uniqueify();
 	click_ip* iphOfUdp=(click_ip*)q->data();
 	igmp_udp* udp=(igmp_udp*)iphOfUdp+1;
@@ -232,7 +234,7 @@ void IGMPRouterMembershipHandler::handleUDPPacket(int interface,Packet* p){
     //iphOfUdp->ip_sum=0;
     uint16_t checksum= click_in_cksum((unsigned char *) iphOfUdp, sizeof(click_ip));
     if(checksum!=0){
-        click_chatter("checksum of ip incorrect");
+        click_chatter("\033[0;30mChecksum of ip incorrect\033[0m");
         return;
     }
     iphOfUdp->ip_sum=checksumBefore;
@@ -244,9 +246,6 @@ void IGMPRouterMembershipHandler::handleUDPPacket(int interface,Packet* p){
 	for(InterfaceReceptionState* i : interfaces){
 		//we check if multicast is ok, and if the filtermode is exclude. If exclude it should forward packets as there is never a list of sources.
 		if(i->multicast==iphOfUdp->ip_dst&& !i->filterMode){
-			/**debug
-			click_chatter("send udp");
-			**/
 			if (Packet *q = p->clone())output(i->interface).push(q);
 		}
 	}
@@ -261,8 +260,16 @@ MembershipQuery IGMPRouterMembershipHandler::makeGeneralQuery(){
 	
 	MembershipQuery query;
 
+	if (typeQueries != 0x11) {
+		click_chatter("\033[0;34mSetting type of query wrong\033[0m");
+	}
 	query.setType(typeQueries);
-	query.setGroupAddr(multicastAddress.s_addr); //normally this is 0.0.0.0
+	if (wrongAddress.s_addr == 0){
+		query.setGroupAddr(multicastAddress.s_addr); //normally this is 0.0.0.0
+	} else {
+		click_chatter("\033[0;34mSetting wrong address general query\033[0m");
+		query.setGroupAddr(wrongAddress.s_addr);
+	}
 	query.setMaxResp(queryResponseInterval);
 	query.setSFlag(false);
 	query.setQRV(robustnessVariable);
@@ -277,7 +284,12 @@ MembershipQuery IGMPRouterMembershipHandler::makeGroupSpecificQuery(uint32_t gro
 	query.setType(typeQueries);
 	query.setMaxResp(lastMemberQueryInterval);
 	query.setSFlag(false);
-	query.setGroupAddr(group);
+	if (wrongAddress.s_addr == 0){
+		query.setGroupAddr(group);
+	} else {
+		click_chatter("\033[0;34mSetting wrong address group specific query\033[0m");
+		query.setGroupAddr(wrongAddress.s_addr);
+	}
 	query.setQQIC(querierInterval);
 	query.setQRV(robustnessVariable);
 
@@ -309,7 +321,7 @@ int IGMPRouterMembershipHandler::setRobustness(const String &conf, Element *e, v
 	if (Args(vconf, routerPtr, errh)
 	.read_mp("ROBUSTNESS", newRobustness)
     .complete() < 0){ return -1;}
-	click_chatter("Setting robustness to %d",newRobustness);
+	click_chatter("\033[0;32mSetting robustness to %d\033[0m",newRobustness);
 
 	routerPtr->robustnessVariable = newRobustness;
 	//we also need to update the lastmemberquerycount to be up to date with the robustnessvariable
@@ -329,7 +341,10 @@ int IGMPRouterMembershipHandler::setQueryInterval(const String &conf, Element *e
 	if (Args(vconf, routerPtr, errh)
 	.read_mp("QUERY_INTERVAL", newQueryInterval)
     .complete() < 0){ return -1;}
-	click_chatter("Setting query interval to %d",newQueryInterval);
+	click_chatter("\033[0;32mSetting query interval to %d\033[0m",newQueryInterval);
+	if (routerPtr->queryResponseInterval > newQueryInterval){
+		routerPtr->queryResponseInterval = newQueryInterval*10;
+	}
 	routerPtr->querierInterval = newQueryInterval;
 }
 
@@ -364,7 +379,7 @@ int IGMPRouterMembershipHandler::setLastMemberQueryInterval(const String &conf, 
 	if (Args(vconf, routerPtr, errh)
 	.read_mp("LAST_MEMBER_QUERY_INTERVAL", newLastMemberQueryInterval)
     .complete() < 0){ return -1;}
-	click_chatter("Setting last member query interval to %d",newLastMemberQueryInterval);
+	click_chatter("\033[0;32mSetting last member query interval to %d\033[0m",newLastMemberQueryInterval);
 
 	routerPtr->lastMemberQueryInterval = newLastMemberQueryInterval;
 }
@@ -380,7 +395,7 @@ int IGMPRouterMembershipHandler::setLastMemberQueryCount(const String &conf, Ele
 	if (Args(vconf, routerPtr, errh)
 	.read_mp("LAST_MEMBER_QUERY_COUNT", newLastMemberQueryCount)
     .complete() < 0){ return -1;}
-	click_chatter("Setting last member query count to %d",newLastMemberQueryCount);
+	click_chatter("\033[0;32mSetting last member query count to %d\033[0m",newLastMemberQueryCount);
 
 	routerPtr->lastMemberQueryCount = newLastMemberQueryCount;
 }
@@ -396,7 +411,7 @@ int IGMPRouterMembershipHandler::setIGMPType(const String &conf, Element *e, voi
 	if (Args(vconf, routerPtr, errh)
 	.read_mp("QUERY", newIGMPType)
     .complete() < 0){ return -1;}
-	click_chatter("Setting igmp type to %d",newIGMPType);
+	click_chatter("\033[0;32mSetting igmp type to %d\033[0m",newIGMPType);
 
 	routerPtr->typeQueries = newIGMPType;
 }
@@ -407,14 +422,14 @@ int IGMPRouterMembershipHandler::setIGMPAddress(const String &conf, Element *e, 
 	Vector<String> vconf;
     cp_argvec(conf, vconf);
 
-	in_addr newIGMPaddress;
+	in_addr newIGMPAddress;
 
 	if (Args(vconf, routerPtr, errh)
-	.read_mp("QUERY", newIGMPaddress)
+	.read_mp("QUERY", newIGMPAddress)
     .complete() < 0){ return -1;}
-	click_chatter("Changing the igmp address for all queries");
+	click_chatter("\033[0;32mChanging the igmp address for all queries\033[0m");
 
-	routerPtr->multicastAddress = newIGMPaddress;
+	routerPtr->wrongAddress = newIGMPAddress;
 }
 
 int IGMPRouterMembershipHandler::setIGMPCheckSum(const String &conf, Element *e, void *thunk, ErrorHandler *errh){
@@ -429,9 +444,9 @@ int IGMPRouterMembershipHandler::setIGMPCheckSum(const String &conf, Element *e,
 	.read_mp("QUERY", validOrFalse)
     .complete() < 0){ return -1;}
 	if(validOrFalse){
-		click_chatter("The router will now start sending wrong checksums");
+		click_chatter("\033[0;32mThe router will now start sending wrong checksums\033[0m");
 	}else{
-		click_chatter("The router will now start sending correct checksums");
+		click_chatter("\033[0;32mThe router will now start sending correct checksums\033[0m");
 	}
 
 	routerPtr->checksumValid = !validOrFalse; 
@@ -449,6 +464,7 @@ void IGMPRouterMembershipHandler::add_handlers(){
 	add_write_handler("invalid_igmp_checksum", &setIGMPCheckSum,(void *)0);
 }
 
+//long function that analyses a membershipreport
 void IGMPRouterMembershipHandler::handleMembershipReport(in_addr src,int interface,V3Membership* mem){
 	
 	for(int recordNumber=0;recordNumber<mem->getRecords().size();recordNumber++){
@@ -469,7 +485,6 @@ void IGMPRouterMembershipHandler::handleMembershipReport(in_addr src,int interfa
 						}
 					}
 					if(!exist){
-						click_chatter("got new leave message");
 						//we do not prune the group now because we first want to be sure there are no other interested members. See rfc 6.4.2 paragraph 4
 
 						//send groupspecific query on this interface
@@ -562,6 +577,9 @@ void IGMPRouterMembershipHandler::handleMembershipReport(in_addr src,int interfa
 		}
 		//it didnt exist yet in the list so we need to make a new receptionState
 		if(!found){
+			if (rec.getRecordType()==1 || rec.getRecordType()==2){
+				continue;
+			}
 			InterfaceReceptionState* state = new InterfaceReceptionState(this);
 			state->groupTimer.initialize(this);
 			state->interface=interface;

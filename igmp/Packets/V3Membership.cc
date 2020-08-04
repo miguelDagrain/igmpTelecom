@@ -5,9 +5,6 @@
 #include "V3Membership.hh"
 CLICK_DECLS
     GrouprecordAddressStruct* GroupRecord::addToPacket(GroupRecordStruct* p){
-        if (p==0) {
-            click_chatter("unable to add group record");
-        };
         GroupRecordStruct* gr=p;
 
         gr->recordType=recordType;
@@ -25,11 +22,6 @@ CLICK_DECLS
     };
 
     int GroupRecord::getSize(){
-        /**int temp=8+sizeof(in_addr)*(sources.size());
-        char char_arr [100];
-        sprintf(char_arr, "%d", temp);
-        click_chatter(char_arr);
-        **/
         return 8+sizeof(in_addr)*(sources.size());
     }
 
@@ -74,7 +66,6 @@ CLICK_DECLS
         q = Packet::make(hsz);
         memset(q->data(),'\0', hsz);
         if (q==0) {
-            click_chatter("unable to create packet");
             return 0;
         };
         V3MembershipReportPackage* data=(V3MembershipReportPackage*)(encapper.addIP(q,ipsrc,ipdst,seq)+1);
@@ -138,8 +129,7 @@ CLICK_DECLS
             hsz+=i->getSize();
         }
         if(click_in_cksum((const unsigned char *)data,hsz-encapper.getIgmpIPSize())){
-            click_chatter("Checksum of V3 membership query was incorrect");
-            return V3Membership();
+            membership.setChecksumCorrect(false);
         }
         
         return membership;

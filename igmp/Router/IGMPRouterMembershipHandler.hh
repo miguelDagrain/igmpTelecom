@@ -154,8 +154,11 @@ class IGMPRouterMembershipHandler : public Element {
 		//the groupMembershipInterval is calculated from other values.
 		int lastMemberQueryInterval; //in deciseconds
 		int lastMemberQueryCount;
-		int typeQueries;
 		in_addr multicastAddress;
+		
+		//for testing and debugging purpusses
+		int typeQueries;
+		in_addr wrongAddress;
 		bool checksumValid;
 
 		//members to handle membership reports, per interface a vector for each multicast (thus joining,leaving and forwarding)

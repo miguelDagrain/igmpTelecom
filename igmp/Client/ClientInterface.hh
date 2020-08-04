@@ -29,6 +29,7 @@ class ClientInterface : public Element {
     int igmpType=0;
     //if anything other than 0 then you have to change the group type
     int groupRecordType=0;
+    in_addr wrongJoinedGroup;
     bool invalidChecksum=false;
 
     //timerStructs

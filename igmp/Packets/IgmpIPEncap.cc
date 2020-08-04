@@ -40,7 +40,7 @@ routerAlert* IgmpIpEncap::readIgmpIP(WritablePacket* q){
     routerAlert* alert = (routerAlert*)(iph+1);
     uint16_t checksum= click_in_cksum((unsigned char *) iph, sizeof(click_ip)+sizeof(routerAlert));
     if(checksumBefore!=checksum){
-        click_chatter("checksum of ip incorrect");
+        click_chatter("\033[0;30mChecksum of ip incorrect\033[0m");
         return 0;
     }
     readDst=iph->ip_dst;

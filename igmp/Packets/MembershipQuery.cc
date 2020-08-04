@@ -11,7 +11,10 @@ CLICK_DECLS
     }
 
     void MembershipQuery::setGroupAddr(uint32_t group){
-        groupAdd=group;
+        groupAddr=group;
+    }
+    uint32_t MembershipQuery::getGroupAddr() {
+        return groupAddr;
     }
     void MembershipQuery::setMaxResp(int max){
         maxResp= max;
@@ -52,7 +55,6 @@ CLICK_DECLS
         int hsz = sizeof(click_ip) +sizeof(routerAlert) +sizeof(MembershipQueryMessage) + (sizeof(uint32_t)*numberOfSources);
         q = Packet::make(hsz);
         if (q==0) {
-            click_chatter("unable to create packet");
             return 0;
         };
         memset(q->data(),'\0', hsz);
@@ -65,7 +67,7 @@ CLICK_DECLS
         data->type = (uint8_t)(queryType);
         data->max_resp_code = HelperFunc::deduceCodeFromInt(maxResp);
         data->checksum = (uint16_t)(0);
-        data->group_address = (uint32_t)(groupAdd);
+        data->group_address = (uint32_t)(groupAddr);
         data->resv = 0;
         data->s = sFlag;
         data->qrv = QRV;
@@ -96,6 +98,7 @@ CLICK_DECLS
         IgmpIpEncap encapper;
         MembershipQuery membership;
         MembershipQueryMessage* data=(MembershipQueryMessage*)(encapper.readIgmpIP(q)+1);
+        membership.setType(data->type);
         membership.setReadIpDst(encapper.getReadDst());
         membership.setReadIpSrc(encapper.getReadSrc());
         //I assume no source addresses are present in the query
@@ -108,7 +111,6 @@ CLICK_DECLS
         //checking the checksum
         unsigned int data_checksum_size = sizeof(MembershipQueryMessage)+(sizeof(uint32_t)*data->numberOfSources);
         if(click_in_cksum((const unsigned char *)data,data_checksum_size)){
-            click_chatter("Checksum of MemberShipQuery was incorrect");
             return MembershipQuery();
         }
         

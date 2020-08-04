@@ -26,7 +26,7 @@ class MembershipQuery: public Element {
 	private:
 		uint8_t queryType;
 		int maxResp;
-		uint32_t groupAdd;
+		uint32_t groupAddr;
 		bool sFlag;
 		int QRV;
 		int QQIC;
@@ -47,6 +47,7 @@ class MembershipQuery: public Element {
 
 		MembershipQuery(){
 			sources=Vector<uint32_t>();
+			queryType = 0;
 		}
 
 		void setType(int type);
@@ -54,6 +55,7 @@ class MembershipQuery: public Element {
 		void setMaxResp(int max);
 		int getMaxResp();
 		void setGroupAddr(uint32_t group);
+		uint32_t getGroupAddr();
 		void setSFlag(bool flag);
 		void setQRV(int qrv);
 		int getQRV();
@@ -72,7 +74,7 @@ class MembershipQuery: public Element {
 		MembershipQuery(const MembershipQuery &p2) {
 			queryType=p2.queryType;
 			maxResp=p2.maxResp;
-			groupAdd=p2.groupAdd;
+			groupAddr=p2.groupAddr;
 			sFlag=p2.sFlag;
 			QRV=p2.QRV;
 			QQIC=p2.QQIC;

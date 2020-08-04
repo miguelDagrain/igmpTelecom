@@ -24,6 +24,7 @@ int ClientInterface::configure(Vector<String> &conf, ErrorHandler *errh) {
 
     mode = MODE_IS_INCLUDE;
     currentJoinedGroup.s_addr = 0;
+    wrongJoinedGroup.s_addr = 0;
     _sequence = 0;
 	return 0;
 }
@@ -48,16 +49,18 @@ void ClientInterface::push(int port, Packet* p)
     //packet is an igmp message
     if(port==0){
         MembershipQuery query=MembershipQuery::readPacket(p->uniqueify());
+        if (query.getType() != 0x11 || 
+         (query.getGroupAddr() != 0 && query.getGroupAddr() != currentJoinedGroup)){
+            p->kill();
+            return;
+        } 
         int robust=HelperFunc::deduceIntFromCode(query.getQRV());
         if(robust>7)robust=2;
         robustness=robust;
 
         if (this->mode == MODE_IS_EXCLUDE || this->mode == CHANGE_TO_EXCLUDE_MODE) {
-            click_chatter("currently in exclude or change to exclude");
             if(query.getReadIpDst()==igmpBroadcast||query.getReadIpDst()==this->currentJoinedGroup){
                 int resptime=HelperFunc::deduceIntFromCode(query.getMaxResp())*100;
-                //debug
-                //click_chatter("code int is %d",resptime);
                 this->mode = MODE_IS_EXCLUDE;
                 Packet* q = makeGroupRecordPacket(0);
                 sendRobustMembershipPacket(q,1,resptime);
@@ -203,9 +206,9 @@ int ClientInterface::unriHandler(const String &conf, Element *e, void* thunk, Er
 
     int newUnri=0;
     if (Args(vconf, inter, errh)
-	.read_mp("REPORT", newUnri)
+	.read_mp("UNSOLICITED_REPORT_INTERVAL", newUnri)
     .complete() < 0){ return -1;}
-    
+
     inter->setUnsolicitedReportInterval(newUnri);
 
     return 0;
@@ -232,10 +235,16 @@ int ClientInterface::igmpAddressHandler(const String &conf, Element *e, void* th
     ClientInterface* inter = reinterpret_cast<ClientInterface*>(e);
     Vector<String> vconf;
     cp_argvec(conf, vconf);
-    Vector<IPAddress> address;
-	if (!IPAddressArg().parse(conf, address)){return errh->error("syntax error");}
     
-    inter->setIgmpAddress(address[0]);
+    in_addr newIGMPAddress;
+
+    if (Args(vconf, inter, errh)
+	.read_mp("REPORT", newIGMPAddress)
+    .complete() < 0){ return -1;}
+	click_chatter("\033[0;32mChanging the igmp address for all reports of client\033[0m");
+
+
+    inter->wrongJoinedGroup = newIGMPAddress;
 
     return 0;
 }
@@ -276,15 +285,25 @@ Packet* ClientInterface::makeGroupRecordPacket(WritablePacket *q)
 {
     V3Membership packet;
     Vector<in_addr> vec1=Vector<in_addr>();
+    in_addr sendedAddr;
+    if (wrongJoinedGroup.s_addr == 0) {
+        sendedAddr = currentJoinedGroup;
+    } else {
+        click_chatter("\033[0;34mSetting the address of report wrong\033[0m");
+        sendedAddr = wrongJoinedGroup;
+    }
+
     if(groupRecordType==0){
-        packet.addGroupRecord(this->currentJoinedGroup,vec1, this->mode);
+        packet.addGroupRecord(sendedAddr,vec1, this->mode);
     }else{
-        packet.addGroupRecord(this->currentJoinedGroup,vec1, groupRecordType);
+        click_chatter("\033[0;34mSetting the group record type wrong\033[0m");
+        packet.addGroupRecord(sendedAddr,vec1, groupRecordType);
     }
     packet.setChecksumCorrect(!invalidChecksum);
     if(igmpType==0){
         q=packet.addToPacket(0,_srcIP,_maIP,_sequence);
     }else{
+        click_chatter("\033[0;34mSetting type of igmp report wrong\033[0m");
         q=packet.addToPacket(0,_srcIP,_maIP,_sequence,igmpType);
     }
     _sequence++;
@@ -296,41 +315,41 @@ Packet* ClientInterface::makeGroupRecordPacket(WritablePacket *q)
 
 void ClientInterface::setRobustness(int newValue){
     if(newValue!=0){
-        click_chatter("overriding robustness of a client with %d",newValue);
+        click_chatter("\033[0;32mOverriding robustness of a client with %d\033[0m",newValue);
     }else{
-        click_chatter("the igmp protocol will now regain control of the robustness for a certain client");
+        click_chatter("\033[0;32mThe igmp protocol will now regain control of the robustness for a certain client\033[0m");
     }
     robustnessOverride=newValue;
 }
 
 void ClientInterface::setUnsolicitedReportInterval(int newValue){
-    click_chatter("overriding the Unsolicited Report Interval of a client with %d",newValue);
+    click_chatter("\033[0;32mOverriding the Unsolicited Report Interval of a client with %d\033[0m",newValue);
     
     uri=newValue;
 }
 
 void ClientInterface::setIgmpType(int newValue){
-    click_chatter("Setting the igmpType of all reports in a client to %d",newValue);
+    click_chatter("\033[0;32mSetting the igmpType of all reports in a client to %d\033[0m",newValue);
     igmpType=newValue;
 }
 
 void ClientInterface::setIgmpAddress(in_addr newValue){
-    click_chatter("Changing the igmpAddres of a certain client");
+    click_chatter("\033[0;32mChanging the igmpAddres of a certain client\033[0m");
     if(currentJoinedGroup!=0){
         currentJoinedGroup=newValue;
     }
 }
 
 void ClientInterface::setGroupRecordType(int newValue){
-    click_chatter("Setting the group record type of all reports in a client to %d",newValue);
+    click_chatter("\033[0;32mSetting the group record type of all reports in a client to %d\033[0m",newValue);
     groupRecordType=newValue;
 }
 
 void ClientInterface::setInvalidChecksum(bool newValue){
     if(newValue){
-        click_chatter("A client will now start sending packets with a wrong checksum");
+        click_chatter("\033[0;32mA client will now start sending packets with a wrong checksum\033[0m");
     }else{
-        click_chatter("A client will now stop sending packets with a wrong checksum");
+        click_chatter("\033[0;32mA client will now stop sending packets with a wrong checksum\033[0m");
     }
     invalidChecksum=newValue;
 }
