@@ -2,6 +2,7 @@
 #include <click/args.hh>
 #include <click/error.hh>
 #include <unistd.h>
+#include <string>
 #include "../Helper/HelperFunc.hh"
 #include "../Packets/V3Membership.hh"
 #include "../Packets/MembershipQuery.hh"
@@ -160,7 +161,8 @@ void IGMPRouterMembershipHandler::handleExpirySQT(Timer* t, void * counter){
 
 }
 
-void IGMPRouterMembershipHandler::expireLMQT(InterfaceReceptionState* receptionState){
+void IGMPRouterMembershipHandler::expireLMQT(InterfaceReceptionState* receptionState, bool cancelled){
+	//we search the correct interface
 	Vector<lastMemberQueryTimerData*>::iterator toRemove = NULL;
 	for(Vector<lastMemberQueryTimerData*>::iterator iter = lmqtDataVec.begin(); iter != lmqtDataVec.end(); iter++){
 		if ((*iter)->receptionState == receptionState){
@@ -168,7 +170,17 @@ void IGMPRouterMembershipHandler::expireLMQT(InterfaceReceptionState* receptionS
 			break;
 		}
 	}
-	delete (*toRemove)->receptionState;
+
+	if(cancelled)
+	//if cancelled we don't remove the receptionstate
+	{}else{
+		//though we never calculated the last member query time a simple rundown of the algorithm is enough to see that amount of time has now passed:
+		//last member query count * last member query interval
+		receptionState->filterMode = true;
+		delete (*toRemove)->receptionState;
+	}
+
+	//we do anyhow need to remove the the receptionstate from the lmqt data vector
 	lmqtDataVec.erase(toRemove);
 }
 
@@ -176,14 +188,8 @@ void IGMPRouterMembershipHandler::handleExpiryLastMemberQueryTimer(Timer * t, vo
 	lastMemberQueryTimerData* data = reinterpret_cast<lastMemberQueryTimerData *>(counter);
 	data->count--;
 	if (data->count == 0){
-		if (data->cancelled){
-		}else{
-			//though we never calculated the last member query time a simple rundown of the algorithm is enough to see that amount of time has now passed:
-			//last member query count * last member query interval
-			data->receptionState->filterMode = true;
-		}
 		IGMPRouterMembershipHandler* mePtr = data->me; 
-		mePtr->expireLMQT(data->receptionState);
+		mePtr->expireLMQT(data->receptionState, data->cancelled);
 	}else{
 		//send query
 		MembershipQuery change = data->me->makeGroupSpecificQuery(data->address.s_addr);

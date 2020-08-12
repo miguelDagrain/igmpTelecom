@@ -128,7 +128,7 @@ class IGMPRouterMembershipHandler : public Element {
 
 		static void handleExpirySQT(Timer*, void *);
 
-		void expireLMQT(InterfaceReceptionState*);
+		void expireLMQT(InterfaceReceptionState*, bool cancelled);
 		
 	private:
 

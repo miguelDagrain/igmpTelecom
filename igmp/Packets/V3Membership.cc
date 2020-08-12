@@ -41,6 +41,9 @@ CLICK_DECLS
     bool V3Membership::isChecksumCorrect(){
         return checksumValid;
     }
+    uint8_t V3Membership::getType(){
+        return igmpType;
+    }
     void V3Membership::setChecksumCorrect(bool correct){
         checksumValid=correct;
     }
@@ -99,6 +102,8 @@ CLICK_DECLS
         V3Membership membership;
         V3MembershipReportPackage* data=(V3MembershipReportPackage*)(encapper.readIgmpIP(q)+1);
         
+        membership.igmpType = data->type;
+
         if(htons(data->groupRecordNumber)>0){
             GroupRecordStruct* gs=(GroupRecordStruct*)(data+1);
             for(int i=0;i<htons(data->groupRecordNumber);i++){

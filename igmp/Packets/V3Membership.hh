@@ -74,6 +74,7 @@ class V3Membership : public Element{
 	private:
 		Vector<GroupRecord> grouprecords;
 		bool checksumValid=true;
+		uint8_t igmpType;
 
 	public:
 		~V3Membership() {};
@@ -111,6 +112,7 @@ class V3Membership : public Element{
 
 		Vector<GroupRecord> getRecords();
 		bool isChecksumCorrect();
+		uint8_t getType();
 
 		void setChecksumCorrect(bool correct);
 };
